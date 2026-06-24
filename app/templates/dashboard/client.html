@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ c.name }} · Heimdall{% endblock %}
+{% block heading %}{{ c.name }}{% endblock %}
+{% block subheading %}Visão de monitoramento do cliente{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a class="btn btn-soft btn-sm" href="{{ url_for('finops.index', client_id=c.id) }}">FinOps</a>
+  <a class="btn btn-soft btn-sm" href="{{ url_for('governance.index', client_id=c.id) }}">Governança IA</a>
+  <a class="btn btn-soft btn-sm" href="{{ url_for('providers.index', client_id=c.id) }}">Provedores</a>
+  <a class="btn btn-soft btn-sm" href="{{ url_for('exports.client_report', client_id=c.id) }}">⬇ Exportar Excel</a>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:24px;">
+  <div class="card kpi"><div class="kpi-label">Custo atual</div>
+    <div class="kpi-value">{{ summary.current_cost|money }}</div>
+    <div class="kpi-sub {{ 'trend-up' if summary.cost_trend>0 else 'trend-down' }}">{{ summary.cost_trend }}% vs mês anterior</div></div>
+  <div class="card kpi"><div class="kpi-label">Estimativa</div>
+    <div class="kpi-value">{{ summary.est_cost|money }}</div>
+    <div class="kpi-sub">próximo mês</div></div>
+  <div class="card kpi"><div class="kpi-label">Tokens IA</div>
+    <div class="kpi-value">{{ summary.total_tokens|num }}</div>
+    <div class="kpi-sub">{{ summary.ai_cost|money }} em IA</div></div>
+  <div class="card kpi"><div class="kpi-label">Créditos restantes</div>
+    <div class="kpi-value">{% if sub %}{{ sub.remaining_credits|money(sub.currency~' ') }}{% else %}—{% endif %}</div>
+    <div class="kpi-sub">{% if sub %}vence {{ sub.end_date.strftime('%d/%m/%Y') }} ({{ sub.days_remaining }} dias){% else %}sem assinatura{% endif %}</div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card"><h3>Custo mensal</h3><div class="chart-box"><canvas id="costChart"></canvas></div></div>
+  <div class="card"><h3>Tokens de IA por mês</h3><div class="chart-box"><canvas id="tokChart"></canvas></div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const periods = {{ summary.periods|tojson }};
+new Chart(document.getElementById('costChart'), {
+  type:'bar',
+  data:{ labels: periods, datasets:[{ label:'Custo', data: {{ summary.billing_series|tojson }},
+    backgroundColor:'#1f4e8c', borderRadius:4 }]},
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+});
+new Chart(document.getElementById('tokChart'), {
+  type:'line',
+  data:{ labels: periods, datasets:[{ label:'Tokens', data: {{ summary.token_series|tojson }},
+    borderColor:'#0f9d8c', backgroundColor:'rgba(15,157,140,.1)', fill:true, tension:.3 }]},
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Heimdall - dispara o agendador de coletas a cada 15 minutos
+
+[Timer]
+# Verifica os agendamentos a cada 15 min; cada coleta roda no horário definido
+# na tela de Agendamentos e só uma vez por janela (controle por last_run).
+OnCalendar=*:0/15
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

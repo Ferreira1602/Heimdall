@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}FinOps Cloud · Heimdall{% endblock %}
+{% block heading %}FinOps Cloud{% endblock %}
+{% block subheading %}Consumo da conta, billing e drill-down de custos{% endblock %}
+
+{% block content %}
+<form method="get" class="toolbar">
+  <label style="margin:0;">Cliente:</label>
+  <select name="client_id" onchange="this.form.submit()">
+    {% for c in clients %}
+      <option value="{{ c.id }}" {{ 'selected' if selected and c.id==selected.id }}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  {% if periods %}
+  <label style="margin:0 0 0 8px;">Período:</label>
+  <select name="period" onchange="this.form.submit()">
+    {% for p in periods %}
+      <option value="{{ p }}" {{ 'selected' if p==period }}>{{ p }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  {% if selected %}<a class="btn btn-soft btn-sm" href="{{ url_for('exports.client_report', client_id=selected.id) }}">⬇ Excel</a>{% endif %}
+</form>
+
+{% if selected %}
+<div class="cards">
+  <div class="card kpi">
+    <div class="kpi-label">Custo do último período</div>
+    <div class="kpi-value">{{ summary.current_cost|money }}</div>
+    <div class="kpi-foot {{ 'trend-up' if summary.cost_trend>0 else 'trend-down' }}">
+      {{ summary.cost_trend }}% vs. período anterior</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label">Estimativa próximo período</div>
+    <div class="kpi-value">{{ est_next|money }}</div>
+    <div class="kpi-foot muted">Projeção (média móvel + regressão)</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label">Contas cloud</div>
+    <div class="kpi-value">{{ summary.n_accounts }}</div>
+    <div class="kpi-foot muted">{{ summary.n_products }} produto(s) de IA</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label">Custo de IA (acumulado)</div>
+    <div class="kpi-value">{{ summary.ai_cost|money }}</div>
+    <div class="kpi-foot muted">{{ summary.total_tokens|num }} tokens</div>
+  </div>
+</div>
+
+<div class="card" style="margin:18px 0;">
+  <h3>Evolução de custo</h3>
+  <div class="chart-box"><canvas id="finChart"></canvas></div>
+</div>
+
+<div class="card">
+  <h3>Drill-down de custos {% if period %}· {{ period }}{% endif %}</h3>
+  {% if breakdown %}
+  <table>
+    <thead><tr>
+      <th>Provedor</th><th>Tipo de recurso</th><th class="num">Itens</th><th class="num">Custo</th>
+    </tr></thead>
+    <tbody>
+    {% for g in breakdown %}
+      <tr>
+        <td><span class="badge prov-{{ g.provider }}">{{ PROVIDER_LABELS.get(g.provider, g.provider) }}</span></td>
+        <td>{{ g.resource_type }}</td>
+        <td class="num">{{ g.count }}</td>
+        <td class="num"><strong>{{ g.cost|money(g.currency~' ') }}</strong></td>
+      </tr>
+      <tr><td colspan="4" style="padding:0;">
+        <details class="drill"><summary><span class="muted">Ver recursos ({{ g.count }})</span></summary>
+          <table class="subtable">
+            <thead><tr><th>Recurso</th><th>Grupo</th><th>Região</th><th>Origem</th><th class="num">Custo</th></tr></thead>
+            <tbody>{% for it in g['items'] %}
+              <tr>
+                <td>{{ it.name or '—' }}</td>
+                <td class="muted">{{ it.group or '—' }}</td>
+                <td class="muted">{{ it.region or '—' }}</td>
+                <td><span class="badge {{ 'badge-api' if it.source=='api' else 'badge-manual' }}">{{ it.source }}</span></td>
+                <td class="num">{{ it.cost|money(g.currency~' ') }}</td>
+              </tr>
+            {% endfor %}</tbody>
+          </table>
+        </details>
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">Nenhum registro de billing para este período. Colete via API em
+    <a href="{{ url_for('providers.index', client_id=selected.id) }}">Provedores</a> ou lance manualmente.</div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card"><div class="empty">Nenhum cliente acessível. Cadastre um cliente para começar.</div></div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if selected %}
+<script>
+new Chart(document.getElementById('finChart'), {
+  type:'bar',
+  data:{ labels: {{ periods|tojson }},
+    datasets:[{ label:'Custo total', data: {{ series|tojson }},
+      backgroundColor:'#1f4e8c', borderRadius:4 }]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales:{ y:{ beginAtZero:true } } }
+});
+</script>
+{% endif %}
+{% endblock %}

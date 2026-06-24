@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Usuários · Heimdall{% endblock %}
+{% block heading %}Usuários{% endblock %}
+{% block subheading %}Controle de acesso e permissões por cliente{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="openModal('mNewUser')">+ Novo usuário</button>
+</div>
+
+<div class="card">
+  <table>
+    <thead><tr>
+      <th>Nome</th><th>E-mail</th><th>Perfil</th><th class="num">Clientes</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td><strong>{{ u.name }}</strong></td>
+        <td class="muted">{{ u.email }}</td>
+        <td>{% if u.is_admin %}<span class="badge badge-ok">admin</span>{% else %}<span class="badge">operador</span>{% endif %}</td>
+        <td class="num">{% if u.is_admin %}todos{% else %}{{ u.permissions|length }}{% endif %}</td>
+        <td>{% if u.active %}<span class="badge badge-ok">ativo</span>{% else %}<span class="badge badge-off">inativo</span>{% endif %}</td>
+        <td class="num"><a class="btn btn-soft btn-sm" href="{{ url_for('auth.user_edit', user_id=u.id) }}">editar</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal novo usuário -->
+<div class="modal" id="mNewUser">
+  <div class="modal-card">
+    <h3>Novo usuário</h3>
+    <form method="post" action="{{ url_for('auth.user_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Nome</label>
+      <input name="name" required>
+      <label>E-mail</label>
+      <input type="email" name="email" required>
+      <label>Senha inicial</label>
+      <input name="password" value="Mudar@123">
+      <label class="check"><input type="checkbox" name="is_admin"> Administrador (acesso total)</label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-soft" onclick="closeModal('mNewUser')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Criar e definir permissões</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

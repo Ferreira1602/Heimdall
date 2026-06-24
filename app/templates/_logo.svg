@@ -1,0 +1,7 @@
+<svg class="brand-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="24" r="22" stroke="#1f4e8c" stroke-width="2.5"/>
+  <path d="M6 24c5-9 13-13 18-13s13 4 18 13c-5 9-13 13-18 13S11 33 6 24Z" stroke="#0f9d8c" stroke-width="2"/>
+  <circle cx="24" cy="24" r="6.5" fill="#1f4e8c"/>
+  <circle cx="24" cy="24" r="2.5" fill="#fff"/>
+  <path d="M24 2v6M24 40v6M2 24h6M40 24h6" stroke="#1f4e8c" stroke-width="2" stroke-linecap="round"/>
+</svg>

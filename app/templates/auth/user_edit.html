@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Editar usuário · Heimdall{% endblock %}
+{% block heading %}{{ u.name }}{% endblock %}
+{% block subheading %}{{ u.email }}{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('auth.user_edit', user_id=u.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="card" style="margin-bottom:18px;">
+    <h3>Dados do usuário</h3>
+    <div class="grid-2">
+      <div><label>Nome</label><input name="name" value="{{ u.name }}"></div>
+      <div><label>Nova senha (deixe em branco para manter)</label><input name="password" placeholder="••••••"></div>
+    </div>
+    <label class="check"><input type="checkbox" name="is_admin" {{ 'checked' if u.is_admin }}> Administrador (acesso total a todos os clientes)</label>
+    <label class="check"><input type="checkbox" name="active" {{ 'checked' if u.active }}> Usuário ativo</label>
+  </div>
+
+  <div class="card">
+    <h3>Permissões por cliente</h3>
+    <p class="muted" style="margin-top:0;">Para administradores estas permissões são ignoradas (acesso total).</p>
+    {% if clients %}
+    <table>
+      <thead><tr><th>Cliente</th><th>Sem acesso</th><th>Leitura</th><th>Leitura + gravação</th></tr></thead>
+      <tbody>
+      {% for c in clients %}
+        {% set lvl = perms.get(c.id, 'none') %}
+        <tr>
+          <td><strong>{{ c.name }}</strong></td>
+          <td><label class="radio"><input type="radio" name="perm_{{ c.id }}" value="none" {{ 'checked' if lvl=='none' }}></label></td>
+          <td><label class="radio"><input type="radio" name="perm_{{ c.id }}" value="read" {{ 'checked' if lvl=='read' }}></label></td>
+          <td><label class="radio"><input type="radio" name="perm_{{ c.id }}" value="write" {{ 'checked' if lvl=='write' }}></label></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Nenhum cliente cadastrado ainda.</div>
+    {% endif %}
+
+    <div class="modal-actions" style="margin-top:18px;">
+      <a class="btn btn-soft" href="{{ url_for('auth.users') }}">Voltar</a>
+      <button type="submit" class="btn btn-primary">Salvar alterações</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

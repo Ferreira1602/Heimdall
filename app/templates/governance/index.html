@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Governança de IA · Heimdall{% endblock %}
+{% block heading %}Governança de IA{% endblock %}
+{% block subheading %}Consumo de tokens, custo e estimativas por produto{% endblock %}
+
+{% block content %}
+<form method="get" class="toolbar">
+  <label style="margin:0;">Cliente:</label>
+  <select name="client_id" onchange="this.form.submit()">
+    {% for c in clients %}
+      <option value="{{ c.id }}" {{ 'selected' if selected and c.id==selected.id }}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  {% if selected %}<a class="btn btn-soft btn-sm" href="{{ url_for('exports.client_report', client_id=selected.id) }}">⬇ Excel</a>{% endif %}
+</form>
+
+{% if selected %}
+<div class="card" style="margin-bottom:18px;">
+  <h3>Consumo de tokens por mês</h3>
+  <div class="chart-box"><canvas id="govChart"></canvas></div>
+</div>
+
+<div class="card">
+  <h3>Produtos de IA</h3>
+  {% if products %}
+  <table>
+    <thead><tr>
+      <th>Produto</th><th>Serviço</th><th class="num">Tokens (total)</th>
+      <th class="num">Custo total</th><th class="num">Estim. tokens</th>
+      <th class="num">Estim. custo</th><th class="num">Tendência</th>
+    </tr></thead>
+    <tbody>
+    {% for p in products %}
+      <tr>
+        <td><strong>{{ p.product.name }}</strong></td>
+        <td class="muted">{{ p.product.service or '—' }}</td>
+        <td class="num">{{ p.total_tokens|num }}</td>
+        <td class="num">{{ p.total_cost|money(p.product.currency~' ') }}</td>
+        <td class="num">{{ p.est_tokens|num }}</td>
+        <td class="num">{{ p.est_cost|money(p.product.currency~' ') }}</td>
+        <td class="num {{ 'trend-up' if p.trend>0 else 'trend-down' }}">{{ p.trend }}%</td>
+      </tr>
+      {% if p.history %}
+      <tr><td colspan="7" style="padding:0;">
+        <details class="drill"><summary><span class="muted">Histórico mensal ({{ p.months }} meses)</span></summary>
+          <table class="subtable">
+            <thead><tr><th>Mês</th><th class="num">Tokens</th><th class="num">Chamadas</th><th class="num">Custo</th></tr></thead>
+            <tbody>{% for h in p.history %}
+              <tr><td>{{ h.period }}</td><td class="num">{{ h.tokens|num }}</td>
+                  <td class="num">{{ h.calls|num }}</td><td class="num">{{ h.cost|money(p.product.currency~' ') }}</td></tr>
+            {% endfor %}</tbody>
+          </table>
+        </details>
+      </td></tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Nenhum produto de IA cadastrado para este cliente.</div>{% endif %}
+</div>
+{% else %}
+<div class="card"><div class="empty">Selecione um cliente.</div></div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if selected %}
+<script>
+new Chart(document.getElementById('govChart'), {
+  type:'bar',
+  data:{ labels: {{ periods|tojson }},
+    datasets:[
+      { label:'Tokens', data: {{ token_series|tojson }}, backgroundColor:'#1f4e8c', borderRadius:4, yAxisID:'y' },
+      { label:'Custo IA', data: {{ cost_series|tojson }}, type:'line', borderColor:'#0f9d8c', yAxisID:'y1', tension:.3 }
+    ]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ position:'left', title:{display:true,text:'Tokens'} },
+             y1:{ position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'Custo'} } } }
+});
+</script>
+{% endif %}
+{% endblock %}

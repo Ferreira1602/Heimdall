@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Meu perfil · Heimdall{% endblock %}
+{% block heading %}Meu perfil{% endblock %}
+{% block subheading %}Altere sua senha de acesso{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:520px;">
+  <h3>Dados</h3>
+  <div class="info-row"><span class="muted">Nome</span><span>{{ current_user.name }}</span></div>
+  <div class="info-row"><span class="muted">E-mail</span><span>{{ current_user.email }}</span></div>
+  <div class="info-row"><span class="muted">Perfil</span>
+    <span>{% if current_user.is_admin %}Administrador{% else %}Operador{% endif %}</span></div>
+</div>
+
+<div class="card" style="max-width:520px; margin-top:18px;">
+  <h3>Alterar senha</h3>
+  <form method="post" action="{{ url_for('auth.profile') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Senha atual</label>
+    <input type="password" name="current" required>
+    <label>Nova senha (mín. 6 caracteres)</label>
+    <input type="password" name="new" required>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button type="submit" class="btn btn-primary">Atualizar senha</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

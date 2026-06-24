@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Agendamentos · Heimdall{% endblock %}
+{% block heading %}Agendamentos de coleta{% endblock %}
+{% block subheading %}Coletas periódicas automáticas por conta de nuvem{% endblock %}
+
+{% block content %}
+{% if accounts %}
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="openModal('mNewSched')">+ Novo agendamento</button>
+</div>
+{% endif %}
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <thead><tr>
+      <th>Conta</th><th>Frequência</th><th>Quando</th><th class="num">Meses anteriores</th>
+      <th>Última execução</th><th>Resultado</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.account.name }}</strong> <span class="muted">({{ r.account.provider_label }})</span></td>
+        <td>{{ r.sched.freq_label }}</td>
+        <td>{{ r.sched.schedule_label() }}</td>
+        <td class="num">{{ r.sched.months_back }}</td>
+        <td class="muted">{{ r.sched.last_run.strftime('%d/%m/%Y %H:%M') if r.sched.last_run else '—' }}</td>
+        <td class="muted">{{ r.sched.last_status or '—' }}</td>
+        <td>{% if r.sched.active %}<span class="badge badge-ok">ativo</span>{% else %}<span class="badge badge-off">pausado</span>{% endif %}</td>
+        <td class="num" style="white-space:nowrap;">
+          <form method="post" action="{{ url_for('schedules.run_now', sched_id=r.sched.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm" title="Executar agora">▶</button>
+          </form>
+          <form method="post" action="{{ url_for('schedules.toggle', sched_id=r.sched.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm">{{ 'pausar' if r.sched.active else 'ativar' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('schedules.delete', sched_id=r.sched.id) }}" style="display:inline;"
+                onsubmit="return confirm('Remover este agendamento?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-soft btn-sm">excluir</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">
+    {% if accounts %}Nenhum agendamento. Crie um para automatizar a coleta.
+    {% else %}Cadastre uma conta de nuvem em um cliente antes de agendar coletas.{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<p class="muted" style="margin-top:14px;font-size:12px;">
+  A execução automática depende do serviço agendador no servidor (systemd timer
+  <code>heimdall-scheduler.timer</code>). O botão ▶ executa a coleta na hora.
+</p>
+
+{% if accounts %}
+<div class="modal" id="mNewSched">
+  <div class="modal-card">
+    <h3>Novo agendamento</h3>
+    <form method="post" action="{{ url_for('schedules.new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Conta de nuvem</label>
+      <select name="cloud_account_id" required>
+        {% for a in accounts %}<option value="{{ a.id }}">{{ a.name }} — {{ a.provider_label }}</option>{% endfor %}
+      </select>
+
+      <label>Frequência</label>
+      <select name="frequency" id="freqSel" onchange="toggleFreq()">
+        <option value="daily">Diária</option>
+        <option value="weekly">Semanal</option>
+        <option value="monthly">Mensal</option>
+      </select>
+
+      <div class="grid-2">
+        <div><label>Hora</label><input type="number" name="hour" min="0" max="23" value="3"></div>
+        <div><label>Minuto</label><input type="number" name="minute" min="0" max="59" value="0"></div>
+      </div>
+
+      <div id="rowWeekly" style="display:none;">
+        <label>Dia da semana</label>
+        <select name="weekday">
+          <option value="0">Segunda</option><option value="1">Terça</option>
+          <option value="2">Quarta</option><option value="3">Quinta</option>
+          <option value="4">Sexta</option><option value="5">Sábado</option>
+          <option value="6">Domingo</option>
+        </select>
+      </div>
+
+      <div id="rowMonthly" style="display:none;">
+        <label>Dia do mês (1–28)</label>
+        <input type="number" name="day_of_month" min="1" max="28" value="1">
+      </div>
+
+      <label>Meses anteriores a recoletar a cada execução</label>
+      <input type="number" name="months_back" min="0" max="12" value="1">
+      <p class="muted" style="font-size:12px;margin-top:4px;">
+        0 = só o mês atual. 1 = mês atual + anterior (recomendado, pois o billing
+        do mês fecha com atraso).
+      </p>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-soft" onclick="closeModal('mNewSched')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Criar agendamento</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFreq(){
+  var f = document.getElementById('freqSel').value;
+  document.getElementById('rowWeekly').style.display  = (f==='weekly')  ? 'block' : 'none';
+  document.getElementById('rowMonthly').style.display = (f==='monthly') ? 'block' : 'none';
+}
+</script>
+{% endblock %}

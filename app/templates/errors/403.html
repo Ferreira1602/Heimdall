@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}403 · Heimdall{% endblock %}
+{% block heading %}Erro 403{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px;text-align:center;padding:48px 32px;">
+  <div style="font-size:56px;font-weight:700;color:var(--accent);">403</div>
+  <h3 style="margin:8px 0;">Acesso negado</h3>
+  <p class="muted">Você não tem permissão para acessar este recurso.</p>
+  <a class="btn btn-primary" href="{{ url_for('dashboard.index') }}" style="margin-top:12px;">Voltar ao dashboard</a>
+</div>
+{% endblock %}

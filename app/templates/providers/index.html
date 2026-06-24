@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Provedores · {{ c.name }}{% endblock %}
+{% block heading %}Provedores & Produtos — {{ c.name }}{% endblock %}
+{% block subheading %}Contas de nuvem, coleta via API e produtos de IA{% endblock %}
+
+{% block content %}
+{% if can_write %}
+<div class="toolbar">
+  <button class="btn" onclick="openModal('mAcc')">+ Nova conta de nuvem</button>
+</div>
+{% else %}
+<div class="flash warning">Você tem acesso somente leitura a este cliente.</div>
+{% endif %}
+
+{% for a in c.cloud_accounts %}
+<div class="card" style="margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <span class="badge">{{ a.provider_label }}</span>
+      <strong style="margin-left:8px;">{{ a.name }}</strong>
+      <div class="muted" style="margin-top:4px;">Ref: {{ a.account_ref or '—' }} · Região: {{ a.region or '—' }}</div>
+    </div>
+    {% if can_write %}
+    <form method="post" action="{{ url_for('providers.collect', account_id=a.id) }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="muted" style="margin:0;font-size:12px;">De</label>
+      <select name="from_month" style="width:auto;">
+        {% for mv, ml in months %}<option value="{{ mv }}" {{ 'selected' if mv==cur_month }}>{{ ml }}</option>{% endfor %}
+      </select>
+      <select name="from_year" style="width:auto;">
+        {% for y in years %}<option value="{{ y }}" {{ 'selected' if y==cur_year }}>{{ y }}</option>{% endfor %}
+      </select>
+      <label class="muted" style="margin:0;font-size:12px;">até</label>
+      <select name="to_month" style="width:auto;">
+        {% for mv, ml in months %}<option value="{{ mv }}" {{ 'selected' if mv==cur_month }}>{{ ml }}</option>{% endfor %}
+      </select>
+      <select name="to_year" style="width:auto;">
+        {% for y in years %}<option value="{{ y }}" {{ 'selected' if y==cur_year }}>{{ y }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-sm">↻ Coletar via API</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="section-title" style="font-size:13px;margin:18px 0 10px;">Produtos de IA</div>
+  {% if a.ai_products %}
+  <table>
+    <thead><tr><th>Produto</th><th>Serviço / Modelo</th><th class="num">Preço in/out (1K)</th><th class="num">Meses</th>{% if can_write %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for p in a.ai_products %}
+      <tr>
+        <td><strong>{{ p.name }}</strong></td>
+        <td class="muted">{{ p.service or '—' }} / {{ p.model or '—' }}</td>
+        <td class="num">{{ p.price_input }} / {{ p.price_output }} {{ p.currency }}</td>
+        <td class="num">{{ p.usages|length }}</td>
+        {% if can_write %}<td class="right"><button class="btn btn-ghost btn-sm" onclick="openModal('mUse{{ p.id }}')">Lançar consumo</button></td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="muted" style="padding:8px 0;">Nenhum produto cadastrado.</div>{% endif %}
+
+  {% if can_write %}
+  <div style="margin-top:12px;display:flex;gap:8px;">
+    <button class="btn btn-soft btn-sm" onclick="openModal('mProd{{ a.id }}')">+ Produto de IA</button>
+    <button class="btn btn-soft btn-sm" onclick="openModal('mBill{{ a.id }}')">+ Billing manual</button>
+  </div>
+  {% endif %}
+</div>
+
+{% if can_write %}
+<!-- modal: novo produto -->
+<div class="modal" id="mProd{{ a.id }}"><div class="modal-box">
+  <h3>Produto de IA — {{ a.provider_label }}</h3>
+  <form method="post" action="{{ url_for('products.new', account_id=a.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-row"><label>Nome</label><input name="name" required placeholder="Ex.: Assistente de Atendimento"></div>
+      <div class="form-row"><label>Serviço</label><input name="service" placeholder="watsonx-orchestrate / bedrock / vertex-ai"></div>
+      <div class="form-row"><label>Modelo</label><input name="model" placeholder="llama-3-70b / gpt-4o / gemini-1.5-pro"></div>
+      <div class="form-row"><label>Moeda</label>
+        <select name="currency"><option>USD</option><option>BRL</option></select></div>
+      <div class="form-row"><label>Preço entrada (por 1K tokens)</label><input name="price_input" type="number" step="0.00000001" value="0"></div>
+      <div class="form-row"><label>Preço saída (por 1K tokens)</label><input name="price_output" type="number" step="0.00000001" value="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-soft" onclick="closeModal('mProd{{ a.id }}')">Cancelar</button>
+      <button class="btn">Salvar</button>
+    </div>
+  </form>
+</div></div>
+
+<!-- modal: billing manual -->
+<div class="modal" id="mBill{{ a.id }}"><div class="modal-box">
+  <h3>Lançamento manual de billing</h3>
+  <form method="post" action="{{ url_for('providers.manual_billing', account_id=a.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-row"><label>Período</label><input type="month" name="period" required></div>
+      <div class="form-row"><label>Tipo de recurso</label><input name="resource_type" placeholder="Compute / Storage / IA"></div>
+      <div class="form-row"><label>Nome do recurso</label><input name="resource_name"></div>
+      <div class="form-row"><label>Grupo de recursos</label><input name="resource_group"></div>
+      <div class="form-row"><label>Região</label><input name="region" value="{{ a.region }}"></div>
+      <div class="form-row"><label>Custo</label><input name="cost" type="number" step="0.01" value="0"></div>
+      <div class="form-row"><label>Moeda</label><select name="currency"><option>BRL</option><option>USD</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-soft" onclick="closeModal('mBill{{ a.id }}')">Cancelar</button>
+      <button class="btn">Lançar</button>
+    </div>
+  </form>
+</div></div>
+
+{% for p in a.ai_products %}
+<!-- modal: lançar consumo do produto -->
+<div class="modal" id="mUse{{ p.id }}"><div class="modal-box">
+  <h3>Consumo de tokens — {{ p.name }}</h3>
+  <form method="post" action="{{ url_for('products.manual_usage', product_id=p.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-row"><label>Período</label><input type="month" name="period" required></div>
+      <div class="form-row"><label>Chamadas</label><input name="calls" type="number" value="0"></div>
+      <div class="form-row"><label>Tokens de entrada</label><input name="input_tokens" type="number" value="0"></div>
+      <div class="form-row"><label>Tokens de saída</label><input name="output_tokens" type="number" value="0"></div>
+      <div class="form-row"><label>Custo (opcional — senão calculado pelo preço)</label><input name="cost" type="number" step="0.000001" placeholder="auto"></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-soft" onclick="closeModal('mUse{{ p.id }}')">Cancelar</button>
+      <button class="btn">Lançar</button>
+    </div>
+  </form>
+</div></div>
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+{% if not c.cloud_accounts %}
+<div class="card"><div class="empty">Nenhuma conta de nuvem cadastrada.</div></div>
+{% endif %}
+
+{% if can_write %}
+<!-- modal: nova conta -->
+<div class="modal" id="mAcc"><div class="modal-box">
+  <h3>Nova conta de nuvem</h3>
+  <form method="post" action="{{ url_for('providers.new', client_id=c.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="form-row"><label>Provedor</label>
+        <select name="provider" id="provSel" onchange="toggleCreds()">
+          {% for p in providers %}<option value="{{ p }}">{{ labels[p] }}</option>{% endfor %}
+        </select></div>
+      <div class="form-row"><label>Nome amigável</label><input name="name" required></div>
+      <div class="form-row"><label>Referência da conta</label><input name="account_ref" placeholder="account_id / subscription_id / tenancy / project"></div>
+      <div class="form-row"><label>Região</label><input name="region" placeholder="us-east-1 / au-syd / brazilsouth"></div>
+    </div>
+
+    <div class="section-title" style="font-size:13px;">Credenciais (criptografadas)</div>
+
+    <div class="creds" data-prov="ibm">
+      <div class="form-row"><label>API Key (IBM)</label><input name="cred_apikey"></div>
+    </div>
+    <div class="creds" data-prov="aws" style="display:none;">
+      <div class="form-grid">
+        <div class="form-row"><label>Access Key</label><input name="cred_access_key"></div>
+        <div class="form-row"><label>Secret Key</label><input name="cred_secret_key"></div>
+        <div class="form-row"><label>Session Token (opcional)</label><input name="cred_session_token"></div>
+      </div>
+    </div>
+    <div class="creds" data-prov="azure" style="display:none;">
+      <div class="form-grid">
+        <div class="form-row"><label>Tenant ID</label><input name="cred_tenant_id"></div>
+        <div class="form-row"><label>Client ID</label><input name="cred_client_id"></div>
+        <div class="form-row"><label>Client Secret</label><input name="cred_client_secret"></div>
+      </div>
+    </div>
+    <div class="creds" data-prov="oracle" style="display:none;">
+      <div class="form-grid">
+        <div class="form-row"><label>User OCID</label><input name="cred_user_ocid"></div>
+        <div class="form-row"><label>Tenancy OCID</label><input name="cred_tenancy_ocid"></div>
+        <div class="form-row"><label>Fingerprint</label><input name="cred_fingerprint"></div>
+      </div>
+      <div class="form-row"><label>Private Key (PEM)</label><textarea name="cred_private_key" rows="3"></textarea></div>
+    </div>
+    <div class="creds" data-prov="google" style="display:none;">
+      <div class="form-row"><label>Service Account JSON</label><textarea name="cred_service_account_json" rows="3"></textarea></div>
+      <div class="form-grid">
+        <div class="form-row"><label>BigQuery Dataset</label><input name="cred_bq_dataset"></div>
+        <div class="form-row"><label>BigQuery Table</label><input name="cred_bq_table"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-soft" onclick="closeModal('mAcc')">Cancelar</button>
+      <button class="btn">Salvar conta</button>
+    </div>
+  </form>
+</div></div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCreds(){
+  const prov = document.getElementById('provSel').value;
+  document.querySelectorAll('.creds').forEach(el=>{
+    el.style.display = el.dataset.prov === prov ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

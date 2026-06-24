@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Clientes · Heimdall{% endblock %}
+{% block heading %}Clientes{% endblock %}
+{% block subheading %}Clientes que você pode visualizar{% endblock %}
+
+{% block content %}
+{% if current_user.is_admin %}
+<div class="toolbar">
+  <button class="btn" onclick="openModal('mNew')">+ Novo cliente</button>
+</div>
+{% endif %}
+
+<div class="card">
+  {% if clients %}
+  <table>
+    <thead><tr><th>Cliente</th><th>Identificador</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for c in clients %}
+      <tr>
+        <td><strong>{{ c.name }}</strong></td>
+        <td class="muted">{{ c.slug }}</td>
+        <td><span class="badge {{ 'badge-ok' if c.active else 'badge-mut' }}">{{ 'ativo' if c.active else 'inativo' }}</span></td>
+        <td class="right"><a class="btn btn-ghost btn-sm" href="{{ url_for('clients.detail', client_id=c.id) }}">Abrir</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Nenhum cliente disponível.</div>{% endif %}
+</div>
+
+{% if current_user.is_admin %}
+<div class="modal" id="mNew"><div class="modal-box">
+  <h3>Novo cliente</h3>
+  <form method="post" action="{{ url_for('clients.new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row"><label>Nome</label><input name="name" required></div>
+    <div class="form-row"><label>Observações</label><textarea name="notes" rows="3"></textarea></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-soft" onclick="closeModal('mNew')">Cancelar</button>
+      <button class="btn">Criar</button>
+    </div>
+  </form>
+</div></div>
+{% endif %}
+{% endblock %}

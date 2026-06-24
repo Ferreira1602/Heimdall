@@ -1,0 +1,13 @@
+[Unit]
+Description=Heimdall - executa coletas agendadas
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/heimdall
+# Reaproveita as variáveis HEIMDALL_* já definidas em /etc/apache2/envvars
+# (o arquivo usa 'export', por isso carregamos via bash).
+ExecStart=/bin/bash -lc 'set -a; . /etc/apache2/envvars; set +a; exec /var/www/heimdall/venv/bin/python /var/www/heimdall/deploy/run_scheduler.py'

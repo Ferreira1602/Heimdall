@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Heimdall{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block subheading %}Monitoramento consolidado de {{ n_clients }} cliente(s){% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a class="btn btn-soft btn-sm" href="{{ url_for('exports.dashboard_report') }}">⬇ Exportar Excel</a>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:24px;">
+  <div class="card kpi">
+    <div class="kpi-label">Custo total (mês atual)</div>
+    <div class="kpi-value">{{ total_cost|money }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label">Estimativa próximo mês</div>
+    <div class="kpi-value">{{ total_est|money }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label">Tokens de IA consumidos</div>
+    <div class="kpi-value">{{ total_tokens|num }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Clientes monitorados</h3>
+  {% if cards %}
+  <table>
+    <thead><tr>
+      <th>Cliente</th><th class="num">Custo atual</th><th class="num">Estimativa</th>
+      <th class="num">Tendência</th><th class="num">Tokens</th>
+      <th class="num">Créditos rest.</th><th>Vigência</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for row in cards %}
+      <tr>
+        <td><strong>{{ row.client.name }}</strong><br>
+            <span class="muted">{{ row.summary.n_accounts }} conta(s) · {{ row.summary.n_products }} IA</span></td>
+        <td class="num">{{ row.summary.current_cost|money }}</td>
+        <td class="num">{{ row.summary.est_cost|money }}</td>
+        <td class="num {{ 'trend-up' if row.summary.cost_trend>0 else 'trend-down' }}">
+          {{ row.summary.cost_trend }}%</td>
+        <td class="num">{{ row.summary.total_tokens|num }}</td>
+        <td class="num">
+          {% if row.sub %}{{ row.sub.remaining_credits|money(row.sub.currency~' ') }}{% else %}—{% endif %}</td>
+        <td>
+          {% if row.sub %}
+            <span class="badge {{ 'badge-ok' if row.sub.is_active else 'badge-danger' }}">
+              {{ row.sub.end_date.strftime('%d/%m/%Y') }}</span>
+          {% else %}<span class="badge-mut badge">sem assinatura</span>{% endif %}
+        </td>
+        <td class="right"><a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.client_view', client_id=row.client.id) }}">Detalhes</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">Nenhum cliente acessível. {% if current_user.is_admin %}<a href="{{ url_for('clients.index') }}">Cadastre um cliente</a>.{% endif %}</div>
+  {% endif %}
+</div>
+{% endblock %}

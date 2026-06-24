@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Heimdall{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/heimdall.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/heimdall.svg') }}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      {% include "_logo.svg" %}
+      <span class="brand-name">HEIMDALL</span>
+    </div>
+    <div class="brand-tag">Sempre vigiando</div>
+
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item {{ 'active' if request.blueprint=='dashboard' }}">
+        <span class="nav-icon">◎</span> Dashboard</a>
+      <a href="{{ url_for('clients.index') }}" class="nav-item {{ 'active' if request.blueprint=='clients' }}">
+        <span class="nav-icon">⬢</span> Clientes</a>
+
+      <div class="nav-section">Governança</div>
+      <a href="{{ url_for('governance.index') }}" class="nav-item {{ 'active' if request.blueprint=='governance' }}">
+        <span class="nav-icon">⊞</span> Governança de IA</a>
+      <a href="{{ url_for('finops.index') }}" class="nav-item {{ 'active' if request.blueprint=='finops' }}">
+        <span class="nav-icon">₿</span> FinOps Cloud</a>
+      <a href="{{ url_for('subscriptions.index') }}" class="nav-item {{ 'active' if request.blueprint=='subscriptions' }}">
+        <span class="nav-icon">◷</span> Assinaturas</a>
+      <a href="{{ url_for('schedules.index') }}" class="nav-item {{ 'active' if request.blueprint=='schedules' }}">
+        <span class="nav-icon">⟳</span> Agendamentos</a>
+
+      {% if current_user.is_admin %}
+      <div class="nav-section">Administração</div>
+      <a href="{{ url_for('auth.users') }}" class="nav-item {{ 'active' if request.blueprint=='auth' and request.endpoint!='auth.profile' }}">
+        <span class="nav-icon">⚇</span> Usuários</a>
+      {% endif %}
+
+      <div class="nav-section">Conta</div>
+      <a href="{{ url_for('auth.profile') }}" class="nav-item {{ 'active' if request.endpoint=='auth.profile' }}">
+        <span class="nav-icon">⚙</span> Meu perfil</a>
+      <a href="{{ url_for('auth.logout') }}" class="nav-item">
+        <span class="nav-icon">⏻</span> Sair</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">{% block heading %}{% endblock %}</div>
+        <div class="page-sub">{% block subheading %}{% endblock %}</div>
+      </div>
+      <div class="user-box">
+        <span>{{ current_user.name }}{% if current_user.is_admin %} · <span class="badge">admin</span>{% endif %}</span>
+        <div class="avatar">{{ current_user.name[:1]|upper }}</div>
+      </div>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}<div class="flashes">
+        {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+      </div>{% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

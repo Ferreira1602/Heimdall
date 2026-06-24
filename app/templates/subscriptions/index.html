@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Assinaturas · Heimdall{% endblock %}
+{% block heading %}Assinaturas{% endblock %}
+{% block subheading %}Vigência e créditos restantes por cliente{% endblock %}
+
+{% block content %}
+{% if current_user.is_admin %}
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="openModal('mNewSub')">+ Nova assinatura</button>
+</div>
+{% endif %}
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <thead><tr>
+      <th>Cliente</th><th>Plano</th><th>Origem</th><th>Início</th><th>Fim</th>
+      <th class="num">Créditos</th><th class="num">Usado</th><th class="num">Saldo</th>
+      <th class="num">Dias rest.</th><th>Status</th>{% if current_user.is_admin %}<th></th>{% endif %}
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.client.name }}</strong></td>
+        <td>{{ r.sub.plan_name }}</td>
+        <td>
+          {% if r.sub.source == 'api' %}<span class="badge badge-api">API</span>
+          {% else %}<span class="badge badge-manual">manual</span>{% endif %}
+        </td>
+        <td>{{ r.sub.start_date }}</td>
+        <td>{{ r.sub.end_date }}</td>
+        <td class="num">{{ r.sub.total_credits|money(r.sub.currency~' ') }}</td>
+        <td class="num">{{ r.sub.used_credits|money(r.sub.currency~' ') }}</td>
+        <td class="num"><strong>{{ r.sub.remaining_credits|money(r.sub.currency~' ') }}</strong></td>
+        <td class="num">{{ r.sub.days_remaining }}</td>
+        <td>
+          {% if r.sub.is_active %}<span class="badge badge-ok">vigente</span>
+          {% else %}<span class="badge badge-off">expirada</span>{% endif %}
+        </td>
+        {% if current_user.is_admin %}
+        <td class="num">
+          {% if r.sub.source == 'api' %}
+            <span class="muted" title="Sincronizada automaticamente pela coleta">sincronizada</span>
+          {% else %}
+          <button class="btn btn-soft btn-sm"
+            onclick="editSub({{ r.sub.id }}, '{{ r.sub.plan_name|e }}', '{{ r.sub.start_date }}', '{{ r.sub.end_date }}', {{ r.sub.total_credits }}, {{ r.sub.used_credits }}, '{{ r.sub.currency }}')">
+            editar</button>
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">Nenhuma assinatura cadastrada.</div>
+  {% endif %}
+</div>
+
+{% if current_user.is_admin %}
+<!-- Modal nova assinatura -->
+<div class="modal" id="mNewSub">
+  <div class="modal-card">
+    <h3>Nova assinatura</h3>
+    <form method="post" action="{{ url_for('subscriptions.new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Cliente</label>
+      <select name="client_id" required>
+        {% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+      <label>Plano</label>
+      <input name="plan_name" value="Padrão">
+      <div class="grid-2">
+        <div><label>Início da vigência</label><input type="date" name="start_date" required></div>
+        <div><label>Fim da vigência</label><input type="date" name="end_date" required></div>
+      </div>
+      <div class="grid-2">
+        <div><label>Créditos totais</label><input type="number" step="0.01" name="total_credits" value="0"></div>
+        <div><label>Créditos usados</label><input type="number" step="0.01" name="used_credits" value="0"></div>
+      </div>
+      <label>Moeda</label>
+      <select name="currency"><option>BRL</option><option>USD</option><option>EUR</option></select>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-soft" onclick="closeModal('mNewSub')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal editar assinatura -->
+<div class="modal" id="mEditSub">
+  <div class="modal-card">
+    <h3>Editar assinatura</h3>
+    <form method="post" id="editSubForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Plano</label>
+      <input name="plan_name" id="es_plan">
+      <div class="grid-2">
+        <div><label>Início</label><input type="date" name="start_date" id="es_start"></div>
+        <div><label>Fim</label><input type="date" name="end_date" id="es_end"></div>
+      </div>
+      <div class="grid-2">
+        <div><label>Créditos totais</label><input type="number" step="0.01" name="total_credits" id="es_total"></div>
+        <div><label>Créditos usados</label><input type="number" step="0.01" name="used_credits" id="es_used"></div>
+      </div>
+      <label>Moeda</label>
+      <select name="currency" id="es_cur"><option>BRL</option><option>USD</option><option>EUR</option></select>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-soft" onclick="closeModal('mEditSub')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Atualizar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if current_user.is_admin %}
+<script>
+function editSub(id, plan, start, end, total, used, cur){
+  const f = document.getElementById('editSubForm');
+  f.action = "{{ url_for('subscriptions.index') }}" + id + "/edit";
+  document.getElementById('es_plan').value = plan;
+  document.getElementById('es_start').value = start;
+  document.getElementById('es_end').value = end;
+  document.getElementById('es_total').value = total;
+  document.getElementById('es_used').value = used;
+  document.getElementById('es_cur').value = cur;
+  openModal('mEditSub');
+}
+</script>
+{% endif %}
+{% endblock %}
